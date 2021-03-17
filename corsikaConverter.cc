@@ -157,7 +157,7 @@ int main(int argc, char *argv[]) {
 
 	ifstream *input = new ifstream(argv[1]);;
     int current_event_number = -1;
-    unsigned int event_count = 0;
+    int event_count = 0;
     int run_number = -1;
     Format _infmt = Format::UNDEFINED;
 
@@ -240,7 +240,7 @@ int main(int argc, char *argv[]) {
 	input->clear();
     input->seekg(0, ios::beg);
     unsigned particleCounter = 0;
-	bool eventWithParticle = false;
+	// bool eventWithParticle = false;
 	// FORTRAN sequential records are prefixed with their length
 	// in a 4-byte word
 	while( input->read(buf.ch, 4)) {
@@ -293,8 +293,8 @@ int main(int argc, char *argv[]) {
 				std::cout << "Primary proton energy between " << lowE << " and " << highE << std::endl;
 			}
 			else if (!strncmp(buf.ch+4*iword, "RUNE", 4)) {
-				unsigned end_run_number = lrint(buf.fl[1+iword]);
-				unsigned end_event_count = lrint(buf.fl[2+iword]);
+				int end_run_number = lrint(buf.fl[1+iword]);
+				int end_event_count = lrint(buf.fl[2+iword]);
 				std::cout << "End Run " << run_number << std::endl;
 
 				if(end_run_number != run_number) {
@@ -331,11 +331,11 @@ int main(int argc, char *argv[]) {
 				// 	particleCounter++;
 				// }
 
-				eventWithParticle = false;
+				// eventWithParticle = false;
 				++event_count;
 			}
 			else if(!strncmp(buf.ch+4*iword, "EVTE", 4)) {
-				unsigned end_event_number = lrint(buf.fl[1+iword]);
+				int end_event_number = lrint(buf.fl[1+iword]);
 				if(end_event_number != current_event_number) {
 					throw std::runtime_error("Error: event number mismatch in end of event record\n");
 				}
@@ -350,7 +350,7 @@ int main(int argc, char *argv[]) {
 
 					std::cout << "Shower " << particleCounter << std::endl;
 
-					eventWithParticle = true;
+					// eventWithParticle = true;
 
 					// Clear arrays
 					memset(StdHepPdg, 0, sizeof(StdHepPdg));
@@ -366,9 +366,9 @@ int main(int argc, char *argv[]) {
 					const float py = buf.fl[iword + i_part + 2];
 					const float pz = -buf.fl[iword + i_part + 3];
 					const float energy = sqrt(mass*mass + px*px + py*py + pz*pz);
-					const float x = buf.fl[iword + i_part + 4];
-					const float y = buf.fl[iword + i_part + 5];
-					const float t = buf.fl[iword + i_part + 6];
+					// const float x = buf.fl[iword + i_part + 4];
+					// const float y = buf.fl[iword + i_part + 5];
+					// const float t = buf.fl[iword + i_part + 6];
 
 					StdHepPdg[StdHepN] = pdgId;
 					StdHepStatus[StdHepN] = 1;
