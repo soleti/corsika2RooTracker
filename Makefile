@@ -5,8 +5,8 @@ TARGET = corsikaConverter
 default: $(TARGET)
 
 $(TARGET): $(TARGET).cc
-        g++ -O2 -Wno-deprecated -std=c++17 $(TARGET).cc -o corsikaConverter -pthread -I$(ROOTSYS)/include $(LFLAGS) -pthread -rdynamic -Wall
+	g++ -O2 -Wno-deprecated -std=c++17 $(TARGET).cc -o corsikaConverter -pthread -I$(ROOTSYS)/include $(LFLAGS) -pthread -rdynamic -Wall
 
 
 clean:
-        $(RM) corsikaConverter
+	$(RM) corsikaConverter
