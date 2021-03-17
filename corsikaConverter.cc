@@ -290,7 +290,7 @@ int main(int argc, char *argv[]) {
 				float lowE = float(buf.fl[16+iword]);
 				float highE = float(buf.fl[17+iword]);
 				std::cout << "Start Run " << run_number << std::endl;
-				std::cout << "Primary proton energy between " << lowE " and " << highE << std::endl;
+				std::cout << "Primary proton energy between " << lowE << " and " << highE << std::endl;
 			}
 			else if (!strncmp(buf.ch+4*iword, "RUNE", 4)) {
 				unsigned end_run_number = lrint(buf.fl[1+iword]);
