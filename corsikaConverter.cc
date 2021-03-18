@@ -6,6 +6,7 @@
 #include "TFile.h"
 #include "TRandom.h"
 #include "TDatabasePDG.h"
+#include "TObjString.h"
 
 #define CM2M 10
 
@@ -174,22 +175,59 @@ int main(int argc, char *argv[]) {
 	static constexpr unsigned kMaxParticles = 39;
 	TRandom *zxRandom = new TRandom();
 
-	float EvtVtx [4];
-	int EvtNum;
-	int StdHepPdg[kMaxParticles];
-	int StdHepN;
-	int StdHepStatus[kMaxParticles];
-	std::fill(StdHepStatus, StdHepStatus + kMaxParticles, 1);
-	float StdHepP4[kMaxParticles][4];
-	float StdHepX4[kMaxParticles][4];
-
+	Int_t EvtNum;
+	TBits *EvtFlags = new TBits();
+	TObjString *EvtCode = new TObjString("");
+	Double_t EvtVtx [4];
+	Double_t EvtXSec = 1.;
+	Double_t EvtDXSec = 1.;
+	Double_t EvtWght = 1.;
+	Double_t EvtProb = 1.;
+	Int_t StdHepPdg[kMaxParticles];
+	Int_t StdHepN;
+	Int_t StdHepStatus[kMaxParticles];
+	Int_t StdHepRescat[kMaxParticles];
+	Double_t StdHepP4[kMaxParticles][4];
+	Double_t StdHepX4[kMaxParticles][4];
+	Double_t StdHepPolz[kMaxParticles][3];
+	Int_t StdHepFd[kMaxParticles];
+	Int_t StdHepLd[kMaxParticles];
+	Int_t StdHepFm[kMaxParticles];
+	Int_t StdHepLm[kMaxParticles];
+	Int_t NuParentPdg;
+	Int_t NuParentDecMode;
+	Double_t NuParentDecP4[4];
+	Double_t NuParentDecX4[4];
+	Double_t NuParentProX4[4];
+	Double_t NuParentProP4[4];
+	Int_t NuParentProNVtx;
 	gRooTracker->Branch("EvtNum", &EvtNum, "EvtNum/I");
-	gRooTracker->Branch("EvtVtx", EvtVtx, "EvtVtx[4]/F");
+    gRooTracker->Branch("EvtFlags", "TBits", &EvtFlags, 32000, 1);
+    gRooTracker->Branch("EvtCode", "TObjString", &EvtCode, 32000, 1);
+	gRooTracker->Branch("EvtVtx", EvtVtx, "EvtVtx[4]/D");
+	gRooTracker->Branch("EvtXSec", &EvtXSec, "EvtXsec/D");
+	gRooTracker->Branch("EvtDXSec", &EvtDXSec, "EvtDXsec/D");
+	gRooTracker->Branch("EvtWght", &EvtWght, "EvtWght/D");
+	gRooTracker->Branch("EvtProb", &EvtProb, "EvtProb/D");
 	gRooTracker->Branch("StdHepN", &StdHepN, "StdHepN/I");
 	gRooTracker->Branch("StdHepPdg", StdHepPdg, "StdHepPdg[StdHepN]/I");
 	gRooTracker->Branch("StdHepStatus", StdHepStatus, "StdHepStatus[StdHepN]/I");
-	gRooTracker->Branch("StdHepP4", StdHepP4, "StdHepP4[StdHepN][4]/F");
-	gRooTracker->Branch("StdHepX4", StdHepX4, "StdHepX4[StdHepN][4]/F");
+	gRooTracker->Branch("StdHepRescat", StdHepRescat, "StdHepRescat[StdHepN]/I");
+	gRooTracker->Branch("StdHepP4", StdHepP4, "StdHepP4[StdHepN][4]/D");
+	gRooTracker->Branch("StdHepX4", StdHepX4, "StdHepX4[StdHepN][4]/D");
+	gRooTracker->Branch("StdHepPolz", StdHepPolz, "StdHepPolz[StdHepN][3]/D");
+	gRooTracker->Branch("StdHepFd", StdHepFd, "StdHepFd[StdHepN]/I");
+	gRooTracker->Branch("StdHepLd", StdHepLd, "StdHepLd[StdHepN]/I");
+	gRooTracker->Branch("StdHepFm", StdHepFm, "StdHepFm[StdHepN]/I");
+	gRooTracker->Branch("StdHepLm", StdHepLm, "StdHepLm[StdHepN]/I");
+
+	gRooTracker->Branch("NuParentPdg", &NuParentPdg, "NuParentPdg/I");
+	gRooTracker->Branch("NuParentDecMode", &NuParentDecMode, "NuParentDecMode/I");
+	gRooTracker->Branch("NuParentDecP4", NuParentDecP4, "NuParentDecP4[4]/D");
+	gRooTracker->Branch("NuParentDecX4", NuParentDecX4, "NuParentDecX4[4]/D");
+	gRooTracker->Branch("NuParentProP4", NuParentProP4, "NuParentProP4[4]/D");
+	gRooTracker->Branch("NuParentProX4", NuParentProX4, "NuParentProX4[4]/D");
+	gRooTracker->Branch("NuParentProNVtx", &NuParentProNVtx, "NuParentProNVtx/I");
 
     while( input->read(buf.ch, 4)) {
       unsigned reclen = buf.in[0];
