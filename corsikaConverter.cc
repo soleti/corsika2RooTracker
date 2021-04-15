@@ -14,6 +14,9 @@ using namespace std;
 
 enum class Format { UNDEFINED, NORMAL, COMPACT };
 static constexpr unsigned _fbsize_words = 5733 + 2;
+static constexpr float box_width[3] = {0.31039 * 2, 1.24078, 0.3151745 * 2}; // meters
+static constexpr float y_top = 0.402154; // top y coordinate of the box
+static constexpr float ceiling = 10; // where we start the simulation in y
 
 union {
 	float fl[_fbsize_words];
@@ -155,6 +158,10 @@ const std::map<unsigned int, int> corsikaToPdgId = {
 };
 
 int main(int argc, char *argv[]) {
+	if (argc == 1) {
+		std::cout << "Usage: corsikaConverter INPUT" << std::endl;
+		return 0;
+	}
 
 	ifstream *input = new ifstream(argv[1]);;
     int current_event_number = -1;
@@ -171,9 +178,8 @@ int main(int argc, char *argv[]) {
 
 	TFile *gRooTrackerFile = new TFile(outputFilename,"RECREATE");
 	TTree *gRooTracker = new TTree("gRooTracker", "gRooTracker");
-
 	static constexpr unsigned kMaxParticles = 39;
-	TRandom *zxRandom = new TRandom();
+	// TRandom *zxRandom = new TRandom();
 
 	Int_t EvtNum;
 	TBits *EvtFlags = new TBits();
@@ -391,41 +397,57 @@ int main(int argc, char *argv[]) {
 					// eventWithParticle = true;
 
 					// Clear arrays
-					memset(StdHepPdg, 0, sizeof(StdHepPdg));
-					memset(StdHepP4, 0, sizeof(StdHepP4));
-					memset(StdHepX4, 0, sizeof(StdHepX4));
-					memset(StdHepStatus, 0, sizeof(StdHepStatus));
-					memset(EvtVtx, 0, sizeof(EvtVtx));
-					StdHepN = 0;
 
 					const int pdgId = corsikaToPdgId.at(id);
 					const float mass = pdg->GetParticle(pdgId)->Mass();
 					const float px = buf.fl[iword + i_part + 1];
 					const float py = buf.fl[iword + i_part + 2];
 					const float pz = -buf.fl[iword + i_part + 3];
-					const float energy = sqrt(mass*mass + px*px + py*py + pz*pz);
-					// const float x = buf.fl[iword + i_part + 4];
-					// const float y = buf.fl[iword + i_part + 5];
+					const float momentum = sqrt(px*px + py*py + pz*pz);
+					const float energy = sqrt(mass*mass + momentum*momentum);
+					const std::vector<float> dir_vector{ px/momentum, pz/momentum, py/momentum };
+					const float t = (y_top-ceiling)/dir_vector[1];
+					const float x = dir_vector[0]*t;
+					const float z = dir_vector[2]*t;
+					const int x_sign = (x >= 0) ? 1 : ((x < 0) ? -1 : 0);
+					const int z_sign = (z >= 0) ? 1 : ((z < 0) ? -1 : 0);
+					const int n_x = x_sign*(int)((fabs(x) + box_width[0]/2)/box_width[0]);
+					const int n_z = z_sign*(int)((fabs(z) + box_width[2]/2)/box_width[2]);
+					// const float x_box = x-x_width*n_x+x_sign*x_width/2;
+					// const float z_box = z-z_width*n_z+z_sign*z_width/2;
+
+					// const float xx = buf.fl[iword + i_part + 4];
+					// const float yy = buf.fl[iword + i_part + 5];
 					// const float t = buf.fl[iword + i_part + 6];
 
-					StdHepPdg[StdHepN] = pdgId;
-					StdHepStatus[StdHepN] = 1;
-					StdHepP4[StdHepN][0] = px;
-					StdHepP4[StdHepN][1] = pz; // Here we switch z and y because in the GDML
-					StdHepP4[StdHepN][2] = py; // y is the vertical coordinate
-					StdHepP4[StdHepN][3] = energy;
-					StdHepX4[StdHepN][0] = 0;
-					StdHepX4[StdHepN][1] = 0;
-					StdHepX4[StdHepN][2] = 0;
-					StdHepX4[StdHepN][3] = 0;
-					EvtVtx[0] = zxRandom->Uniform(-5,5);
-					EvtVtx[1] = 10;
-					EvtVtx[2] = zxRandom->Uniform(-5,5);
-					EvtNum = particleCounter;
-					StdHepN++;
-					gRooTracker->Fill();
+					for (int ix=-2; ix <= 2; ix++) { // These loops take into account adjacent
+						for (int iz=-2; iz <=2; iz++) { // boxes so we consider also cosmic rays entering from the side
+							memset(StdHepPdg, 0, sizeof(StdHepPdg));
+							memset(StdHepP4, 0, sizeof(StdHepP4));
+							memset(StdHepX4, 0, sizeof(StdHepX4));
+							memset(StdHepStatus, 0, sizeof(StdHepStatus));
+							memset(EvtVtx, 0, sizeof(EvtVtx));
+							StdHepN = 0;
+							StdHepPdg[StdHepN] = pdgId;
+							StdHepStatus[StdHepN] = 1;
+							StdHepP4[StdHepN][0] = px;
+							StdHepP4[StdHepN][1] = pz; // Here we switch z and y because in the GDML
+							StdHepP4[StdHepN][2] = py; // y is the vertical coordinate
+							StdHepP4[StdHepN][3] = energy;
+							StdHepX4[StdHepN][0] = 0;
+							StdHepX4[StdHepN][1] = 0;
+							StdHepX4[StdHepN][2] = 0;
+							StdHepX4[StdHepN][3] = 0;
+							EvtVtx[0] = -(n_x+ix)*box_width[0];
+							EvtVtx[1] = 10;
+							EvtVtx[2] = -(n_z+iz)*box_width[2];
+							EvtNum = particleCounter;
+							StdHepN++;
+							gRooTracker->Fill();
+							particleCounter++;
+						}
+					}
 
-					particleCounter++;
 				}
 			}
 
