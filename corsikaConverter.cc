@@ -420,8 +420,8 @@ int main(int argc, char *argv[]) {
 					// const float yy = buf.fl[iword + i_part + 5];
 					// const float t = buf.fl[iword + i_part + 6];
 
-					for (int ix=-2; ix <= 2; ix++) { // These loops take into account adjacent
-						for (int iz=-2; iz <=2; iz++) { // boxes so we consider also cosmic rays entering from the side
+					for (int ix=-3; ix <= 3; ix++) { // These loops take into account adjacent
+						for (int iz=-3; iz <=3; iz++) { // boxes so we consider also cosmic rays entering from the sides
 							memset(StdHepPdg, 0, sizeof(StdHepPdg));
 							memset(StdHepP4, 0, sizeof(StdHepP4));
 							memset(StdHepX4, 0, sizeof(StdHepX4));
