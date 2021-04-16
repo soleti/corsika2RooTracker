@@ -179,7 +179,7 @@ int main(int argc, char *argv[]) {
 	TFile *gRooTrackerFile = new TFile(outputFilename,"RECREATE");
 	TTree *gRooTracker = new TTree("gRooTracker", "gRooTracker");
 	static constexpr unsigned kMaxParticles = 39;
-	// TRandom *zxRandom = new TRandom();
+	TRandom *zxRandom = new TRandom();
 
 	Int_t EvtNum;
 	TBits *EvtFlags = new TBits();
@@ -407,8 +407,8 @@ int main(int argc, char *argv[]) {
 					const float energy = sqrt(mass*mass + momentum*momentum);
 					const std::vector<float> dir_vector{ px/momentum, pz/momentum, py/momentum };
 					const float t = (y_top-ceiling)/dir_vector[1];
-					const float x = dir_vector[0]*t;
-					const float z = dir_vector[2]*t;
+					const float x = dir_vector[0]*t + zxRandom->Uniform(-box_width[0]/2,box_width[0]/2);
+					const float z = dir_vector[2]*t + zxRandom->Uniform(-box_width[2]/2,box_width[2]/2);
 					const int x_sign = (x >= 0) ? 1 : ((x < 0) ? -1 : 0);
 					const int z_sign = (z >= 0) ? 1 : ((z < 0) ? -1 : 0);
 					const int n_x = x_sign*(int)((fabs(x) + box_width[0]/2)/box_width[0]);
