@@ -385,43 +385,39 @@ int main(int argc, char *argv[]) {
 				}
 			}
 			else {
+				for (int ix=-3; ix <= 3; ix++) { // These loops take into account adjacent
+					for (int iz=-3; iz <=3; iz++) { // boxes so we consider also cosmic rays entering from the sides
 
-				for (unsigned i_part = 0; i_part < block_words; i_part+=7) {
-					unsigned id = buf.fl[iword + i_part] / 1000;
+						for (unsigned i_part = 0; i_part < block_words; i_part+=7) {
+							unsigned id = buf.fl[iword + i_part] / 1000;
+							if (id == 0)
+								continue;
 
-					if (id == 0)
-						continue;
+							// eventWithParticle = true;
 
-					std::cout << "Shower " << particleCounter << std::endl;
+							// Clear arrays
 
-					// eventWithParticle = true;
+							const int pdgId = corsikaToPdgId.at(id);
+							const float mass = pdg->GetParticle(pdgId)->Mass();
+							const float px = buf.fl[iword + i_part + 1];
+							const float py = buf.fl[iword + i_part + 2];
+							const float pz = -buf.fl[iword + i_part + 3];
+							const float momentum = sqrt(px*px + py*py + pz*pz);
+							const float energy = sqrt(mass*mass + momentum*momentum);
+							const std::vector<float> dir_vector{ px/momentum, pz/momentum, py/momentum };
+							const float t = (y_top-ceiling)/dir_vector[1];
+							const float x = dir_vector[0]*t + zxRandom->Uniform(-box_width[0]/2,box_width[0]/2);
+							const float z = dir_vector[2]*t + zxRandom->Uniform(-box_width[2]/2,box_width[2]/2);
+							const int x_sign = (x >= 0) ? 1 : ((x < 0) ? -1 : 0);
+							const int z_sign = (z >= 0) ? 1 : ((z < 0) ? -1 : 0);
+							const int n_x = x_sign*(int)((fabs(x) + box_width[0]/2)/box_width[0]);
+							const int n_z = z_sign*(int)((fabs(z) + box_width[2]/2)/box_width[2]);
+							// const float x_box = x-x_width*n_x+x_sign*x_width/2;
+							// const float z_box = z-z_width*n_z+z_sign*z_width/2;
 
-					// Clear arrays
-
-					const int pdgId = corsikaToPdgId.at(id);
-					const float mass = pdg->GetParticle(pdgId)->Mass();
-					const float px = buf.fl[iword + i_part + 1];
-					const float py = buf.fl[iword + i_part + 2];
-					const float pz = -buf.fl[iword + i_part + 3];
-					const float momentum = sqrt(px*px + py*py + pz*pz);
-					const float energy = sqrt(mass*mass + momentum*momentum);
-					const std::vector<float> dir_vector{ px/momentum, pz/momentum, py/momentum };
-					const float t = (y_top-ceiling)/dir_vector[1];
-					const float x = dir_vector[0]*t + zxRandom->Uniform(-box_width[0]/2,box_width[0]/2);
-					const float z = dir_vector[2]*t + zxRandom->Uniform(-box_width[2]/2,box_width[2]/2);
-					const int x_sign = (x >= 0) ? 1 : ((x < 0) ? -1 : 0);
-					const int z_sign = (z >= 0) ? 1 : ((z < 0) ? -1 : 0);
-					const int n_x = x_sign*(int)((fabs(x) + box_width[0]/2)/box_width[0]);
-					const int n_z = z_sign*(int)((fabs(z) + box_width[2]/2)/box_width[2]);
-					// const float x_box = x-x_width*n_x+x_sign*x_width/2;
-					// const float z_box = z-z_width*n_z+z_sign*z_width/2;
-
-					// const float xx = buf.fl[iword + i_part + 4];
-					// const float yy = buf.fl[iword + i_part + 5];
-					// const float t = buf.fl[iword + i_part + 6];
-
-					for (int ix=-3; ix <= 3; ix++) { // These loops take into account adjacent
-						for (int iz=-3; iz <=3; iz++) { // boxes so we consider also cosmic rays entering from the sides
+							// const float xx = buf.fl[iword + i_part + 4];
+							// const float yy = buf.fl[iword + i_part + 5];
+							// const float t = buf.fl[iword + i_part + 6];
 							memset(StdHepPdg, 0, sizeof(StdHepPdg));
 							memset(StdHepP4, 0, sizeof(StdHepP4));
 							memset(StdHepX4, 0, sizeof(StdHepX4));
@@ -438,16 +434,29 @@ int main(int argc, char *argv[]) {
 							StdHepX4[StdHepN][1] = 0;
 							StdHepX4[StdHepN][2] = 0;
 							StdHepX4[StdHepN][3] = 0;
+							// if (i_part == 0) {
 							EvtVtx[0] = -(n_x+ix)*box_width[0];
-							EvtVtx[1] = 10;
+							EvtVtx[1] = ceiling;
 							EvtVtx[2] = -(n_z+iz)*box_width[2];
 							EvtNum = particleCounter;
-							StdHepN++;
+							// std::cout << "Shower " << particleCounter << std::endl;
 							gRooTracker->Fill();
 							particleCounter++;
+
+							// }
+							// std::cout << "Particle " << StdHepN << std::endl;
+
+							StdHepN++;
+						}
+
+						if (StdHepN > 0) {
+								StdHepN = 0;
+							    EvtNum = particleCounter;
+								StdHepStatus[StdHepN] = -1;
+								gRooTracker->Fill();
+								particleCounter++;
 						}
 					}
-
 				}
 			}
 
