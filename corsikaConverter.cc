@@ -8,14 +8,17 @@
 #include "TDatabasePDG.h"
 #include "TObjString.h"
 
-#define CM2M 10
+#define CM2M 0.01
 
 using namespace std;
 
 enum class Format { UNDEFINED, NORMAL, COMPACT };
 static constexpr unsigned _fbsize_words = 5733 + 2;
 static constexpr float box_width[3] = {0.31039 * 2, 1.24078, 0.3151745 * 2}; // meters
-static constexpr float y_top = 0.402154; // top y coordinate of the box
+static constexpr float x_border[2] = {-3.10390000e-01,  3.10390000e-01};
+static constexpr float y_border[2] = {-8.38626000e-01,  4.02154000e-01};
+static constexpr float z_border[2] = {-3.15174500e-01,  3.15174500e-01};
+
 static constexpr float ceiling = 10; // where we start the simulation in y
 
 union {
@@ -169,8 +172,8 @@ int main(int argc, char *argv[]) {
     int run_number = -1;
     Format _infmt = Format::UNDEFINED;
 
-	TDatabasePDG *pdg = TDatabasePDG::Instance();
-	pdg->ReadPDGTable();
+	TDatabasePDG *pdg_database = TDatabasePDG::Instance();
+	pdg_database->ReadPDGTable();
 
 	char outputFilename[256];
 	strcpy(outputFilename, argv[1]);
@@ -179,7 +182,8 @@ int main(int argc, char *argv[]) {
 	TFile *gRooTrackerFile = new TFile(outputFilename,"RECREATE");
 	TTree *gRooTracker = new TTree("gRooTracker", "gRooTracker");
 	static constexpr unsigned kMaxParticles = 39;
-	TRandom *zxRandom = new TRandom();
+	TRandom *xyzRandom = new TRandom();
+	//TRandom *particleIndex = new TRandom();
 
 	Int_t EvtNum;
 	TBits *EvtFlags = new TBits();
@@ -385,75 +389,91 @@ int main(int argc, char *argv[]) {
 				}
 			}
 			else {
-				const float x_shift = zxRandom->Uniform(-box_width[0]/2,box_width[0]/2);
-				const float z_shift = zxRandom->Uniform(-box_width[0]/2,box_width[0]/2);
-				for (int ix=-5; ix <= 5; ix++) { // These loops take into account adjacent
-					for (int iz=-5; iz <=5; iz++) { // boxes so we consider also cosmic rays entering from the sides
+				// const float x_shift = zxRandom->Uniform(-box_width[0]/2,box_width[0]/2);
+				// const float z_shift = zxRandom->Uniform(-box_width[0]/2,box_width[0]/2);
+				std::vector<float> x;
+				std::vector<float> z;
+			        std::vector<float> px;
+				std::vector<float> py;
+				std::vector<float> pz;
+				std::vector<int> pdg;
 
-						for (unsigned i_part = 0; i_part < block_words; i_part+=7) {
-							unsigned id = buf.fl[iword + i_part] / 1000;
-							if (id == 0)
-								continue;
+				for (unsigned i_part = 0; i_part < block_words; i_part+=7) {
+					unsigned id = buf.fl[iword + i_part] / 1000;
+					if (id == 0)
+						continue;
+					x.push_back(buf.fl[iword + i_part + 4] * CM2M);
+					z.push_back(buf.fl[iword + i_part + 5] * CM2M);
+					px.push_back(buf.fl[iword + i_part + 1]);
+					pz.push_back(buf.fl[iword + i_part + 2]);
+					py.push_back(-buf.fl[iword + i_part + 3]);
+					pdg.push_back(corsikaToPdgId.at(id));
+				}
 
-							const int pdgId = corsikaToPdgId.at(id);
-							const float mass = pdg->GetParticle(pdgId)->Mass();
-							const float px = buf.fl[iword + i_part + 1];
-							const float py = buf.fl[iword + i_part + 2];
-							const float pz = -buf.fl[iword + i_part + 3];
-							const float momentum = sqrt(px*px + py*py + pz*pz);
-							const float energy = sqrt(mass*mass + momentum*momentum);
-							const std::vector<float> dir_vector{ px/momentum, pz/momentum, py/momentum };
-							const float t = (y_top-ceiling)/dir_vector[1];
-							const float x = dir_vector[0]*t + x_shift;
-							const float z = dir_vector[2]*t + z_shift;
-							const int x_sign = (x >= 0) ? 1 : ((x < 0) ? -1 : 0);
-							const int z_sign = (z >= 0) ? 1 : ((z < 0) ? -1 : 0);
-							const int n_x = x_sign*(int)((fabs(x) + box_width[0]/2)/box_width[0]);
-							const int n_z = z_sign*(int)((fabs(z) + box_width[2]/2)/box_width[2]);
+				//const unsigned pidx = particleIndex->Integer(x.size());
+				//const float momentum = sqrt(px[pidx]*px[pidx] + py[pidx]*py[pidx] + pz[pidx]*pz[pidx]);
+				//const std::vector<float> dir_vector{ px[pidx]/momentum, py[pidx]/momentum, pz[pidx]/momentum };
+				//const float random_y = xyzRandom->Uniform(y_border[0],y_border[1]);
+				//const float t = (random_y-ceiling)/dir_vector[1];
+				//const float x_particle = x[pidx] + dir_vector[0]*t;
+				//const float z_particle = z[pidx] + dir_vector[2]*t;
+				//const float deltax[2] = {x_particle-x_border[1],x_particle-x_border[0]};
+				//const float deltaz[2] = {z_particle-z_border[1],z_particle-z_border[0]};
+				//const float x_shift = xyzRandom->Uniform(*std::min_element(deltax,deltax+2), *std::max_element(deltax,deltax+2));
+				//const float z_shift = xyzRandom->Uniform(*std::min_element(deltaz,deltaz+2), *std::max_element(deltaz,deltaz+2));
 
-							// const float x_box = x-x_width*n_x+x_sign*x_width/2;
-							// const float z_box = z-z_width*n_z+z_sign*z_width/2;
+				for (unsigned i_part = 0; i_part < x.size(); i_part++) {
+					const float momentum = sqrt(px[i_part]*px[i_part] + py[i_part]*py[i_part] + pz[i_part]*pz[i_part]);
+					const std::vector<float> dir_vector{ px[i_part]/momentum, py[i_part]/momentum, pz[i_part]/momentum };
+				        const float random_y = xyzRandom->Uniform(y_border[0],y_border[1]);
+					const float t = (random_y-ceiling)/dir_vector[1];
+					const float x_particle = x[i_part] + dir_vector[0]*t;
+					const float z_particle = z[i_part] + dir_vector[2]*t;
+				        const float deltax[2] = {x_particle-x_border[1],x_particle-x_border[0]};
+					const float deltaz[2] = {z_particle-z_border[1],z_particle-z_border[0]};
+					const float x_shift = xyzRandom->Uniform(*std::min_element(deltax,deltax+2), *std::max_element(deltax,deltax+2));
+					const float z_shift = xyzRandom->Uniform(*std::min_element(deltaz,deltaz+2), *std::max_element(deltaz,deltaz+2));
 
-							// const float xx = buf.fl[iword + i_part + 4];
-							// const float yy = buf.fl[iword + i_part + 5];
-							// const float t = buf.fl[iword + i_part + 6];
+					// Clear variables
+					memset(StdHepPdg, 0, sizeof(StdHepPdg));
+					memset(StdHepP4, 0, sizeof(StdHepP4));
+					memset(StdHepX4, 0, sizeof(StdHepX4));
+					memset(StdHepStatus, 0, sizeof(StdHepStatus));
+					memset(EvtVtx, 0, sizeof(EvtVtx));
+					StdHepN = 0;
+					StdHepPdg[StdHepN] = pdg[i_part];
+					StdHepStatus[StdHepN] = 1;
+					StdHepP4[StdHepN][0] = px[i_part];
+					StdHepP4[StdHepN][1] = py[i_part]; // Here we switch z and y because in the GDML
+					StdHepP4[StdHepN][2] = pz[i_part]; // y is the vertical coordinate
+					const float mass = pdg_database->GetParticle(pdg[i_part])->Mass();
+					const float energy = sqrt(mass*mass + momentum*momentum);
+					StdHepP4[StdHepN][3] = energy;
+					StdHepX4[StdHepN][0] = 0;
+					StdHepX4[StdHepN][1] = 0;
+					StdHepX4[StdHepN][2] = 0;
+					StdHepX4[StdHepN][3] = 0;
+					EvtVtx[0] = x[i_part]-x_shift;
+					EvtVtx[1] = ceiling;
+					EvtVtx[2] = z[i_part]-z_shift;
+					EvtNum = particleCounter;
+					StdHepN++;
+					gRooTracker->Fill();
+					particleCounter++;
+				//}
 
-							// Clear variables
-							memset(StdHepPdg, 0, sizeof(StdHepPdg));
-							memset(StdHepP4, 0, sizeof(StdHepP4));
-							memset(StdHepX4, 0, sizeof(StdHepX4));
-							memset(StdHepStatus, 0, sizeof(StdHepStatus));
-							memset(EvtVtx, 0, sizeof(EvtVtx));
-							StdHepN = 0;
-
-							StdHepPdg[StdHepN] = pdgId;
-							StdHepStatus[StdHepN] = 1;
-							StdHepP4[StdHepN][0] = px;
-							StdHepP4[StdHepN][1] = pz; // Here we switch z and y because in the GDML
-							StdHepP4[StdHepN][2] = py; // y is the vertical coordinate
-							StdHepP4[StdHepN][3] = energy;
-							StdHepX4[StdHepN][0] = 0;
-							StdHepX4[StdHepN][1] = 0;
-							StdHepX4[StdHepN][2] = 0;
-							StdHepX4[StdHepN][3] = 0;
-							EvtVtx[0] = x_shift-(n_x+ix)*box_width[0];
-							EvtVtx[1] = ceiling;
-							EvtVtx[2] = z_shift-(n_z+iz)*box_width[2];
-							EvtNum = particleCounter;
-							StdHepN++;
-							gRooTracker->Fill();
-							particleCounter++;
-						}
-
-						if (StdHepN > 0) {
-								StdHepN = 0;
-							    EvtNum = particleCounter;
-								StdHepStatus[StdHepN] = -1;
-								StdHepN++;
-								gRooTracker->Fill();
-								particleCounter++;
-						}
-					}
+				//if (StdHepN > 0) {
+					memset(StdHepPdg, 0, sizeof(StdHepPdg));
+					memset(StdHepP4, 0, sizeof(StdHepP4));
+					memset(StdHepX4, 0, sizeof(StdHepX4));
+					memset(StdHepStatus, 0, sizeof(StdHepStatus));
+					memset(EvtVtx, 0, sizeof(EvtVtx));
+					StdHepN = 0;
+					EvtNum = particleCounter;
+					StdHepStatus[StdHepN] = -1;
+					StdHepN++;
+					gRooTracker->Fill();
+					particleCounter++;
 				}
 			}
 
