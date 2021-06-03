@@ -393,11 +393,10 @@ int main(int argc, char *argv[]) {
 				// const float z_shift = zxRandom->Uniform(-box_width[0]/2,box_width[0]/2);
 				std::vector<float> x;
 				std::vector<float> z;
-			        std::vector<float> px;
+				std::vector<float> px;
 				std::vector<float> py;
 				std::vector<float> pz;
 				std::vector<int> pdg;
-
 				for (unsigned i_part = 0; i_part < block_words; i_part+=7) {
 					unsigned id = buf.fl[iword + i_part] / 1000;
 					if (id == 0)
@@ -425,55 +424,60 @@ int main(int argc, char *argv[]) {
 				for (unsigned i_part = 0; i_part < x.size(); i_part++) {
 					const float momentum = sqrt(px[i_part]*px[i_part] + py[i_part]*py[i_part] + pz[i_part]*pz[i_part]);
 					const std::vector<float> dir_vector{ px[i_part]/momentum, py[i_part]/momentum, pz[i_part]/momentum };
-				        const float random_y = xyzRandom->Uniform(y_border[0],y_border[1]);
+					const float random_y = xyzRandom->Uniform(y_border[0],y_border[1]);
 					const float t = (random_y-ceiling)/dir_vector[1];
 					const float x_particle = x[i_part] + dir_vector[0]*t;
 					const float z_particle = z[i_part] + dir_vector[2]*t;
-				        const float deltax[2] = {x_particle-x_border[1],x_particle-x_border[0]};
+					const float deltax[2] = {x_particle-x_border[1],x_particle-x_border[0]};
 					const float deltaz[2] = {z_particle-z_border[1],z_particle-z_border[0]};
 					const float x_shift = xyzRandom->Uniform(*std::min_element(deltax,deltax+2), *std::max_element(deltax,deltax+2));
 					const float z_shift = xyzRandom->Uniform(*std::min_element(deltaz,deltaz+2), *std::max_element(deltaz,deltaz+2));
 
-					// Clear variables
-					memset(StdHepPdg, 0, sizeof(StdHepPdg));
-					memset(StdHepP4, 0, sizeof(StdHepP4));
-					memset(StdHepX4, 0, sizeof(StdHepX4));
-					memset(StdHepStatus, 0, sizeof(StdHepStatus));
-					memset(EvtVtx, 0, sizeof(EvtVtx));
-					StdHepN = 0;
-					StdHepPdg[StdHepN] = pdg[i_part];
-					StdHepStatus[StdHepN] = 1;
-					StdHepP4[StdHepN][0] = px[i_part];
-					StdHepP4[StdHepN][1] = py[i_part]; // Here we switch z and y because in the GDML
-					StdHepP4[StdHepN][2] = pz[i_part]; // y is the vertical coordinate
-					const float mass = pdg_database->GetParticle(pdg[i_part])->Mass();
-					const float energy = sqrt(mass*mass + momentum*momentum);
-					StdHepP4[StdHepN][3] = energy;
-					StdHepX4[StdHepN][0] = 0;
-					StdHepX4[StdHepN][1] = 0;
-					StdHepX4[StdHepN][2] = 0;
-					StdHepX4[StdHepN][3] = 0;
-					EvtVtx[0] = x[i_part]-x_shift;
-					EvtVtx[1] = ceiling;
-					EvtVtx[2] = z[i_part]-z_shift;
-					EvtNum = particleCounter;
-					StdHepN++;
-					gRooTracker->Fill();
-					particleCounter++;
-				//}
+					for (int nx = -5; nx <= 5; nx++) {
+						for (int nz = -5; nz <= 5; nz++) {
+							// Clear variables
+							memset(StdHepPdg, 0, sizeof(StdHepPdg));
+							memset(StdHepP4, 0, sizeof(StdHepP4));
+							memset(StdHepX4, 0, sizeof(StdHepX4));
+							memset(StdHepStatus, 0, sizeof(StdHepStatus));
+							memset(EvtVtx, 0, sizeof(EvtVtx));
+							StdHepN = 0;
+							StdHepPdg[StdHepN] = pdg[i_part];
+							StdHepStatus[StdHepN] = 1;
+							StdHepP4[StdHepN][0] = px[i_part];
+							StdHepP4[StdHepN][1] = py[i_part]; // Here we switch z and y because in the GDML
+							StdHepP4[StdHepN][2] = pz[i_part]; // y is the vertical coordinate
+							const float mass = pdg_database->GetParticle(pdg[i_part])->Mass();
+							const float energy = sqrt(mass*mass + momentum*momentum);
+							StdHepP4[StdHepN][3] = energy;
+							StdHepX4[StdHepN][0] = 0;
+							StdHepX4[StdHepN][1] = 0;
+							StdHepX4[StdHepN][2] = 0;
+							StdHepX4[StdHepN][3] = 0;
+							EvtVtx[0] = x[i_part] - x_shift + nx*(x_border[1]-x_border[0]);
+							EvtVtx[1] = ceiling;
+							EvtVtx[2] = z[i_part] - z_shift + nz*(z_border[1]-z_border[0]);
+							EvtNum = particleCounter;
+							StdHepN++;
+							gRooTracker->Fill();
+							particleCounter++;
+						//}
 
-				//if (StdHepN > 0) {
-					memset(StdHepPdg, 0, sizeof(StdHepPdg));
-					memset(StdHepP4, 0, sizeof(StdHepP4));
-					memset(StdHepX4, 0, sizeof(StdHepX4));
-					memset(StdHepStatus, 0, sizeof(StdHepStatus));
-					memset(EvtVtx, 0, sizeof(EvtVtx));
-					StdHepN = 0;
-					EvtNum = particleCounter;
-					StdHepStatus[StdHepN] = -1;
-					StdHepN++;
-					gRooTracker->Fill();
-					particleCounter++;
+						//if (StdHepN > 0) {
+							memset(StdHepPdg, 0, sizeof(StdHepPdg));
+							memset(StdHepP4, 0, sizeof(StdHepP4));
+							memset(StdHepX4, 0, sizeof(StdHepX4));
+							memset(StdHepStatus, 0, sizeof(StdHepStatus));
+							memset(EvtVtx, 0, sizeof(EvtVtx));
+							StdHepN = 0;
+							EvtNum = particleCounter;
+							StdHepStatus[StdHepN] = -1;
+							StdHepN++;
+							gRooTracker->Fill();
+							particleCounter++;
+						}
+					}
+
 				}
 			}
 
